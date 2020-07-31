@@ -1,0 +1,5 @@
+CREATE TABLE decks (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR NOT NULL,
+  created_by INT NOT NULL
+)

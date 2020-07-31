@@ -1,2 +1,2 @@
-[global.databases.postgres_db]
+[global.databases.my_db]
 url = "postgres://postgres:password@localhost"

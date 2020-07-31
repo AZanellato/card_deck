@@ -1,0 +1,15 @@
+Hello {{ error_message }} 
+<section id="hello">
+  <h1>Hi {{ title }}!</h1>
+  <h3>Here are your items:</h3>
+  <ul>
+    {{#each items}}
+      <li>{{ this }}</li>
+    {{/each}}
+  </ul>
+</section>
+
+<section id="custom-helper">
+  <p>Try going to <a href="/hello/YourName">/hello/YourName</a>.</p>
+</section>
+
