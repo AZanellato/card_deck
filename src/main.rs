@@ -25,7 +25,13 @@ fn main() {
         .attach(Template::fairing())
         .mount(
             "/",
-            routes![routes::index, routes::get_decks, routes::get_decks_as_json],
+            routes![
+                routes::index,
+                routes::post_deck,
+                routes::get_deck,
+                routes::get_deck_as_json,
+                routes::get_decks
+            ],
         )
         .launch();
 }
