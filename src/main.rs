@@ -30,7 +30,8 @@ fn main() {
                 routes::post_deck,
                 routes::get_deck,
                 routes::get_deck_as_json,
-                routes::get_decks
+                routes::get_decks,
+                routes::add_card_to_deck
             ],
         )
         .launch();

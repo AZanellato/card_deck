@@ -10,11 +10,18 @@ struct DeckTemplate {
     title: Option<String>,
     id: Option<i32>,
     error_message: Option<String>,
+    // This key tells handlebars which template is the parent.
+    parent: &'static str,
 }
 
 #[derive(Debug, FromForm)]
 pub struct FormDeck {
     title: String,
+}
+
+#[derive(Debug, FromForm)]
+pub struct FormCardId {
+    card_id: i32,
 }
 
 #[get("/")]
@@ -51,14 +58,38 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
             title: Some(deck.title),
             id: Some(deck.id),
             error_message: None,
+            parent: "layout",
         },
         Err(error_message) => DeckTemplate {
             title: None,
             id: None,
             error_message: Some(error_message),
+            parent: "layout",
         },
     };
-    dbg!(&context);
+    Template::render("deck", &context)
+}
+#[post("/decks/<id>", data = "<card_form>")]
+pub fn add_card_to_deck(conn: DeckDbConn, id: i32, card_form: Form<FormCardId>) -> Template {
+    dbg!(&card_form);
+    let possible_deck: Result<Deck, String> = deck::by_id(&*conn, id).map_err(|err| match err {
+        diesel::result::Error::NotFound => format!("No deck with id: {}", id),
+        _ => "Error on the database".into(),
+    });
+    let context = match possible_deck {
+        Ok(deck) => DeckTemplate {
+            title: Some(deck.title),
+            id: Some(deck.id),
+            error_message: None,
+            parent: "layout",
+        },
+        Err(error_message) => DeckTemplate {
+            title: None,
+            id: None,
+            error_message: Some(error_message),
+            parent: "layout",
+        },
+    };
     Template::render("deck", &context)
 }
 
@@ -73,6 +104,7 @@ pub fn post_deck(conn: DeckDbConn, form_deck: Form<FormDeck>) -> Template {
         title: None,
         id: None,
         error_message: Some("Not saved".into()),
+        parent: "layout",
     };
     Template::render("deck", &context)
 }

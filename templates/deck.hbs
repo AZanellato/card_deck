@@ -1,15 +1,47 @@
-Hello {{ error_message }} 
-<section id="hello">
-  <h1>Hi {{ title }}!</h1>
-  <h3>Here are your items:</h3>
-  <ul>
-    {{#each items}}
-      <li>{{ this }}</li>
-    {{/each}}
-  </ul>
-</section>
+{{#*inline "page"}}
+{{#if error_message}}
+  <h1>{{error_message}}</h1>
+{{else}}
+<nav class="panel is-primary">
+  <p class="panel-heading">
+    Cards
+  </p>
+  <a class="panel-block is-active">
+    <span class="panel-icon">
+      <i class="fas fa-book" aria-hidden="true"></i>
+    </span>
+    Card Title
+  </a>
+  <a class="panel-block is-active">
+    <span class="panel-icon">
+      <i class="fas fa-book" aria-hidden="true"></i>
+    </span>
+    Card Title 2
+  </a>
+  {{#each cards}}
+    <a class="panel-block is-active">
+      <span class="panel-icon">
+        <i class="fas fa-book" aria-hidden="true"></i>
+      </span>
+      {{ this.title }}
+    </a>
+  {{/each}}
+  <div class="panel-block" style="justify-content: flex-end !important">
+    <form method="post">
+      <div class="field has-addons is-pulled-right">
+        <div class="control is-expanded">
+          <input name="card_id" class="input" type="text" placeholder="Card id">
+        </div>
+        <div class="control">
+          <button class="button is-info">
+            Add card by id
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</nav>
 
-<section id="custom-helper">
-  <p>Try going to <a href="/hello/YourName">/hello/YourName</a>.</p>
-</section>
-
+{{/if}}
+{{/inline}}
+{{~> (parent)~}}
