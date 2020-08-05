@@ -8,7 +8,6 @@ pub struct Deck {
     pub created_by: i32,
 }
 
-// card_ids: Vec<usize>,
 /// This represents a deck being inserted into the database, without the auto-generated fields
 #[derive(Serialize, Deserialize, Insertable)]
 #[table_name = "decks"]

@@ -12,9 +12,10 @@ extern crate serde_derive;
 
 use rocket_contrib::templates::Template;
 
-pub mod deck;
-pub mod routes;
-pub mod schema;
+mod card;
+mod deck;
+mod routes;
+mod schema;
 
 #[database("postgres_db")]
 pub struct DeckDbConn(diesel::PgConnection);
