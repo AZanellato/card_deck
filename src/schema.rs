@@ -3,7 +3,6 @@ table! {
         id -> Int4,
         title -> Varchar,
         deck_id -> Int4,
-        done -> Bool,
         finished_at -> Nullable<Timestamp>,
         created_at -> Timestamp,
         updated_at -> Timestamp,

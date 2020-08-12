@@ -9,7 +9,6 @@ pub struct Card {
     pub id: i32,
     pub title: String,
     pub deck_id: i32,
-    pub done: bool,
     pub finished_at: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -21,7 +20,6 @@ pub struct Card {
 pub struct InsertableCard {
     pub title: String,
     pub deck_id: i32,
-    pub done: bool,
     pub finished_at: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
@@ -32,7 +30,6 @@ pub struct InsertableCard {
 pub struct UpdateableCard {
     pub title: Option<String>,
     pub deck_id: Option<i32>,
-    pub done: Option<bool>,
     pub finished_at: Option<Option<NaiveDateTime>>,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,

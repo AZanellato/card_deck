@@ -1,2 +1,4 @@
-[global.databases.postgres_db]
-url = "postgres://postgres:password@localhost"
+[development]
+secret_key = "NAH2UYQiE/pzpV+wA5l+dGKRNPcApq2pbKY4SiOhbKg="
+# [databases.postgres_db]
+databases = { postgres_db = { url = "postgres://postgres:password@localhost" }}
