@@ -17,9 +17,29 @@ table! {
     }
 }
 
+table! {
+    user_tokens (id) {
+        id -> Int4,
+        token -> Text,
+        user_id -> Int4,
+        service -> Text,
+    }
+}
+
+table! {
+    users (id) {
+        id -> Int4,
+        email -> Nullable<Text>,
+        name -> Text,
+    }
+}
+
 joinable!(cards -> decks (deck_id));
+joinable!(user_tokens -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
     cards,
     decks,
+    user_tokens,
+    users,
 );
