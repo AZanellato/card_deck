@@ -1,7 +1,10 @@
 use super::deck::Deck;
 use super::schema::cards;
+use super::user_token::UserToken;
+use anyhow::Result;
 use chrono::NaiveDateTime;
 use diesel::{self, insert_into, prelude::*};
+mod pipefy;
 
 #[derive(Associations, Identifiable, Serialize, Deserialize, Queryable)]
 #[belongs_to(Deck)]
@@ -55,8 +58,34 @@ pub fn create(conn: &PgConnection, insertable: InsertableCard) -> QueryResult<Ca
     insert_into(cards).values(&insertable).get_result(conn)
 }
 
-pub fn update(conn: &PgConnection, updateable: UpdateableCard) -> QueryResult<usize> {
+pub fn update(
+    conn: &PgConnection,
+    user_token: UserToken,
+    updateable: UpdateableCard,
+) -> QueryResult<usize> {
     use crate::schema::cards::dsl::*;
 
     diesel::update(cards).set(&updateable).execute(conn)
+}
+
+pub fn from_pipefy_to_deck(
+    conn: &PgConnection,
+    user_token: UserToken,
+    card_id: i32,
+    deck: Deck,
+) -> Result<usize> {
+    let api_token = user_token.token;
+    let pipefy_card = pipefy::by_id(&api_token, card_id)?;
+    let card = InsertableCard {
+        title: pipefy_card.title,
+        deck_id: deck.id,
+        finished_at: pipefy_card.finished_at,
+        created_at: pipefy_card.created_at,
+        updated_at: pipefy_card.updated_at,
+    };
+    let insertion_result = diesel::insert_into(cards::table)
+        .values(&card)
+        .execute(conn);
+
+    insertion_result.map_err(|err| anyhow::Error::new(err))
 }
