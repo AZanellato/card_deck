@@ -16,6 +16,8 @@ mod card;
 mod deck;
 mod routes;
 mod schema;
+mod user;
+mod user_token;
 
 #[database("postgres_db")]
 pub struct DeckDbConn(diesel::PgConnection);
