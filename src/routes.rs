@@ -1,4 +1,7 @@
+use crate::card;
 use crate::deck::{self, Deck, InsertableDeck};
+use crate::user::User;
+use crate::user_token::UserToken;
 use crate::DeckDbConn;
 use diesel::{self, prelude::*};
 use rocket::request::Form;
@@ -70,27 +73,57 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
     Template::render("deck", &context)
 }
 #[post("/decks/<id>", data = "<card_form>")]
-pub fn add_card_to_deck(conn: DeckDbConn, id: i32, card_form: Form<FormCardId>) -> Template {
-    dbg!(&card_form);
+pub fn add_card_to_deck(
+    conn: DeckDbConn,
+    user: User,
+    id: i32,
+    card_form: Form<FormCardId>,
+) -> Template {
     let possible_deck: Result<Deck, String> = deck::by_id(&*conn, id).map_err(|err| match err {
         diesel::result::Error::NotFound => format!("No deck with id: {}", id),
         _ => "Error on the database".into(),
     });
-    let context = match possible_deck {
-        Ok(deck) => DeckTemplate {
+
+    let deck = match possible_deck {
+        Ok(deck) => deck,
+        Err(error_message) => {
+            return Template::render(
+                "deck",
+                &DeckTemplate {
+                    title: None,
+                    id: None,
+                    error_message: Some(error_message),
+                    parent: "layout",
+                },
+            )
+        }
+    };
+    let query_for_user_token = UserToken::belonging_to(&user).first(&*conn);
+
+    if let Err(_) = query_for_user_token {
+        return Template::render(
+            "deck",
+            DeckTemplate {
+                title: None,
+                id: None,
+                error_message: Some("No Token Found".into()),
+                parent: "layout",
+            },
+        );
+    }
+
+    let user_token = query_for_user_token.unwrap();
+    card::from_pipefy_to_deck(&conn, user_token, card_form.card_id, deck);
+
+    Template::render(
+        "deck",
+        DeckTemplate {
             title: Some(deck.title),
             id: Some(deck.id),
             error_message: None,
             parent: "layout",
         },
-        Err(error_message) => DeckTemplate {
-            title: None,
-            id: None,
-            error_message: Some(error_message),
-            parent: "layout",
-        },
-    };
-    Template::render("deck", &context)
+    )
 }
 
 #[post("/decks", data = "<form_deck>")]
