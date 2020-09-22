@@ -29,17 +29,13 @@ table! {
 table! {
     users (id) {
         id -> Int4,
-        email -> Nullable<Text>,
+        email -> Text,
         name -> Text,
+        hash_password -> Text,
     }
 }
 
 joinable!(cards -> decks (deck_id));
 joinable!(user_tokens -> users (user_id));
 
-allow_tables_to_appear_in_same_query!(
-    cards,
-    decks,
-    user_tokens,
-    users,
-);
+allow_tables_to_appear_in_same_query!(cards, decks, user_tokens, users,);
