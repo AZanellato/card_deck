@@ -45,11 +45,10 @@ pub fn by_id(conn: &PgConnection, input_id: i32) -> QueryResult<Card> {
 
 pub fn by_deck(conn: &PgConnection, deck_id: i32) -> Vec<Card> {
     use crate::schema::cards::dsl::*;
-    let empty_vec: Vec<Card> = vec![];
     cards
         .filter(deck_id.eq(deck_id))
         .load::<Card>(conn)
-        .unwrap_or(empty_vec)
+        .unwrap_or_else(|_| Vec::new())
 }
 
 pub fn create(conn: &PgConnection, insertable: InsertableCard) -> QueryResult<Card> {
@@ -72,7 +71,7 @@ pub fn from_pipefy_to_deck(
     conn: &PgConnection,
     user_token: UserToken,
     card_id: i32,
-    deck: Deck,
+    deck: &Deck,
 ) -> Result<usize> {
     let api_token = user_token.token;
     let pipefy_card = pipefy::by_id(&api_token, card_id)?;

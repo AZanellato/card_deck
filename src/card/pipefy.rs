@@ -37,7 +37,8 @@ pub struct PipefyCard {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhaseHistory {
-    firstTimeIn: NaiveDateTime,
+    #[serde(rename(deserialize = "firstTimeIn"))]
+    first_time_in: NaiveDateTime,
     phase: Phase,
 }
 
@@ -81,7 +82,7 @@ pub fn by_id(api_key: &str, card_id: i32) -> Result<PipefyCard> {
 
 fn perform_query(api_key: &str, query: HashMap<&str, String>) -> Result<String, reqwest::Error> {
     let client = reqwest::blocking::Client::new();
-    let mut res = client
+    let res = client
         .post("https://app.pipefy.com/queries")
         .json(&query)
         .bearer_auth(api_key)
