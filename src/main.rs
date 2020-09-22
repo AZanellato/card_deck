@@ -34,6 +34,9 @@ fn main() {
                 routes::get_deck,
                 routes::get_deck_as_json,
                 routes::get_decks,
+                routes::create_user,
+                routes::login_user,
+                routes::user_info,
                 routes::add_card_to_deck
             ],
         )

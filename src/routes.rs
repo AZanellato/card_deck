@@ -103,6 +103,11 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
     };
     Template::render("deck", &context)
 }
+#[get("/me")]
+pub fn user_info(user: User) -> Json<(String, String)> {
+    Json((user.name, user.email))
+}
+
 #[post("/decks/<id>", data = "<card_form>")]
 pub fn add_card_to_deck(
     conn: DeckDbConn,
@@ -185,7 +190,7 @@ pub fn post_deck(conn: DeckDbConn, form_deck: Form<FormDeck>) -> Template {
 }
 
 #[post("/users/login", data = "<login_info>")]
-fn login_post(
+pub fn login_user(
     conn: DeckDbConn,
     login_info: Form<UserLogin>,
     mut cookies: Cookies,
@@ -211,7 +216,10 @@ fn login_post(
 }
 
 #[post("/users/create", data = "<creation_info>")]
-fn create_user(conn: DeckDbConn, creation_info: Form<UserCreate>) -> Json<Result<User, String>> {
+pub fn create_user(
+    conn: DeckDbConn,
+    creation_info: Form<UserCreate>,
+) -> Json<Result<User, String>> {
     let maybe_user = user::fetch_by_email(&conn, &creation_info.email);
     if let Ok(_) = maybe_user {
         return Json(Err("User already exists".into()));
