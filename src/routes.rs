@@ -1,10 +1,13 @@
 use crate::card;
 use crate::deck::{self, Deck, InsertableDeck};
-use crate::user::User;
+use crate::user::{self, InsertableUser, User};
 use crate::user_token::UserToken;
 use crate::DeckDbConn;
 use diesel::{self, prelude::*};
-use rocket::request::Form;
+use djangohashers::{check_password, make_password};
+use rocket::http::{Cookie, Cookies};
+use rocket::outcome::IntoOutcome;
+use rocket::request::{Form, FromRequest, Outcome, Request};
 use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
@@ -22,23 +25,51 @@ pub struct FormDeck {
     title: String,
 }
 
+#[derive(FromForm)]
+pub struct UserLogin {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(FromForm)]
+pub struct UserCreate {
+    pub email: String,
+    pub password: String,
+    pub name: String,
+}
+
 #[derive(Debug, FromForm)]
 pub struct FormCardId {
     card_id: i32,
 }
 
+impl<'a, 'r> FromRequest<'a, 'r> for User {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> Outcome<User, ()> {
+        let conn = request.guard::<DeckDbConn>()?;
+
+        request
+            .cookies()
+            .get_private("user_id")
+            .and_then(|cookie| cookie.value().parse().ok())
+            .and_then(|id| user::fetch_by_id(&*conn, id).ok())
+            .or_forward(())
+    }
+}
+// routes
 #[get("/")]
 pub fn index() -> &'static str {
     "Hello, world!"
 }
 
 #[get("/decks")]
-pub fn get_decks(conn: crate::DeckDbConn) -> Json<Vec<Deck>> {
+pub fn get_decks(conn: DeckDbConn) -> Json<Vec<Deck>> {
     Json(deck::all(&*conn))
 }
 
 #[get("/decks/<id>/json", format = "json")]
-pub fn get_deck_as_json(conn: crate::DeckDbConn, id: i32) -> Result<Json<Deck>, String> {
+pub fn get_deck_as_json(conn: DeckDbConn, id: i32) -> Result<Json<Deck>, String> {
     deck::by_id(&*conn, id)
         .map_err(|err| match err {
             diesel::result::Error::NotFound => (format!("No deck with id: {}", id)).into(),
@@ -113,17 +144,28 @@ pub fn add_card_to_deck(
     }
 
     let user_token = query_for_user_token.unwrap();
-    card::from_pipefy_to_deck(&conn, user_token, card_form.card_id, deck);
+    let inserted_result = card::from_pipefy_to_deck(&conn, user_token, card_form.card_id, &deck);
 
-    Template::render(
-        "deck",
-        DeckTemplate {
-            title: Some(deck.title),
-            id: Some(deck.id),
-            error_message: None,
-            parent: "layout",
-        },
-    )
+    match inserted_result {
+        Ok(_) => Template::render(
+            "deck",
+            DeckTemplate {
+                title: Some(deck.title),
+                id: Some(deck.id),
+                error_message: None,
+                parent: "layout",
+            },
+        ),
+        Err(_) => Template::render(
+            "deck",
+            DeckTemplate {
+                title: None,
+                id: None,
+                error_message: Some("Error when inserting the card".into()),
+                parent: "layout",
+            },
+        ),
+    }
 }
 
 #[post("/decks", data = "<form_deck>")]
@@ -140,4 +182,48 @@ pub fn post_deck(conn: DeckDbConn, form_deck: Form<FormDeck>) -> Template {
         parent: "layout",
     };
     Template::render("deck", &context)
+}
+
+#[post("/users/login", data = "<login_info>")]
+fn login_post(
+    conn: DeckDbConn,
+    login_info: Form<UserLogin>,
+    mut cookies: Cookies,
+) -> Json<Option<i32>> {
+    let maybe_user = user::fetch_by_email(&conn, &login_info.email);
+    if let Err(_) = maybe_user {
+        return Json(None);
+    }
+
+    let user = maybe_user.unwrap();
+
+    match check_password(&login_info.password, &user.hash_password) {
+        Ok(valid) => {
+            if valid {
+                cookies.add_private(Cookie::new("user_id", user.id.to_string()));
+                Json(Some(user.id))
+            } else {
+                Json(None)
+            }
+        }
+        Err(_) => Json(None),
+    }
+}
+
+#[post("/users/create", data = "<creation_info>")]
+fn create_user(conn: DeckDbConn, creation_info: Form<UserCreate>) -> Json<Result<User, String>> {
+    let maybe_user = user::fetch_by_email(&conn, &creation_info.email);
+    if let Ok(_) = maybe_user {
+        return Json(Err("User already exists".into()));
+    }
+
+    let hash_password = make_password(&creation_info.password);
+
+    let user_info = Form::into_inner(creation_info);
+    let insertable_user = InsertableUser {
+        email: user_info.email,
+        name: user_info.name,
+        hash_password,
+    };
+    Json(Ok(user::create(&*conn, insertable_user)))
 }
