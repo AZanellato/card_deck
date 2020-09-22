@@ -1,5 +1,6 @@
 use crate::schema::user_tokens;
 use crate::user::User;
+use diesel::{self, prelude::*};
 
 #[derive(Identifiable, Associations, Serialize, Deserialize, Queryable)]
 #[belongs_to(User)]
