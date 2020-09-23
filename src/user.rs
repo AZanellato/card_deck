@@ -1,7 +1,7 @@
 use crate::schema::users;
 use diesel::{self, prelude::*};
 
-#[derive(Identifiable, Serialize, Deserialize, Queryable)]
+#[derive(Identifiable, Debug, Serialize, Deserialize, Queryable)]
 pub struct User {
     pub id: i32,
     pub email: String,
@@ -26,12 +26,12 @@ pub fn create(conn: &PgConnection, insertable_user: InsertableUser) -> User {
         .expect("Error saving user")
 }
 
-pub fn fetch_by_email(conn: &PgConnection, email: &str) -> QueryResult<User> {
+pub fn fetch_by_email(conn: &PgConnection, input_email: &str) -> QueryResult<User> {
     use crate::schema::users::dsl::*;
-    users.filter(email.eq(email)).first(conn)
+    users.filter(email.eq(input_email)).first(conn)
 }
 
-pub fn fetch_by_id(conn: &PgConnection, id: usize) -> QueryResult<User> {
+pub fn fetch_by_id(conn: &PgConnection, input_id: i32) -> QueryResult<User> {
     use crate::schema::users::dsl::*;
-    users.find(id).first(conn)
+    users.find(input_id).first(conn)
 }
