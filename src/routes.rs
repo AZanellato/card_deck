@@ -25,13 +25,13 @@ pub struct FormDeck {
     title: String,
 }
 
-#[derive(FromForm)]
+#[derive(FromForm, Debug)]
 pub struct UserLogin {
     pub email: String,
     pub password: String,
 }
 
-#[derive(FromForm)]
+#[derive(FromForm, Debug)]
 pub struct UserCreate {
     pub email: String,
     pub password: String,
@@ -64,8 +64,15 @@ pub fn index() -> &'static str {
 }
 
 #[get("/decks")]
-pub fn get_decks(conn: DeckDbConn) -> Json<Vec<Deck>> {
-    Json(deck::all(&*conn))
+pub fn get_decks(conn: DeckDbConn, user: User) -> Json<Vec<Deck>> {
+    use crate::schema::decks::dsl::*;
+
+    let results = decks
+        .filter(created_by.eq(user.id))
+        .load::<Deck>(&*conn)
+        .unwrap_or(vec![]);
+
+    Json(results)
 }
 
 #[get("/decks/<id>/json", format = "json")]
@@ -174,10 +181,10 @@ pub fn add_card_to_deck(
 }
 
 #[post("/decks", data = "<form_deck>")]
-pub fn post_deck(conn: DeckDbConn, form_deck: Form<FormDeck>) -> Template {
+pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Template {
     let insertable_deck = InsertableDeck {
         title: form_deck.into_inner().title,
-        created_by: 1,
+        created_by: user.id,
     };
     let result = deck::create(&*conn, insertable_deck);
     match result {
