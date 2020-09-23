@@ -180,13 +180,26 @@ pub fn post_deck(conn: DeckDbConn, form_deck: Form<FormDeck>) -> Template {
         created_by: 1,
     };
     let result = deck::create(&*conn, insertable_deck);
-    let context = DeckTemplate {
-        title: None,
-        id: None,
-        error_message: Some("Not saved".into()),
-        parent: "layout",
-    };
-    Template::render("deck", &context)
+    match result {
+        Ok(deck) => {
+            let context = DeckTemplate {
+                title: Some(deck.title),
+                id: Some(deck.id),
+                error_message: None,
+                parent: "layout",
+            };
+            Template::render("deck", &context)
+        }
+        Err(err) => {
+            let context = DeckTemplate {
+                title: None,
+                id: None,
+                error_message: Some(err.to_string()),
+                parent: "layout",
+            };
+            Template::render("deck", &context)
+        }
+    }
 }
 
 #[post("/users/login", data = "<login_info>")]
