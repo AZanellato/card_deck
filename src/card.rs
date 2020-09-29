@@ -3,6 +3,7 @@ use super::schema::cards;
 use super::user_token::UserToken;
 use anyhow::Result;
 use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use diesel::{self, insert_into, prelude::*};
 mod pipefy;
 
@@ -78,9 +79,9 @@ pub fn from_pipefy_to_deck(
     let card = InsertableCard {
         title: pipefy_card.title,
         deck_id: deck.id,
-        finished_at: pipefy_card.finished_at,
-        created_at: pipefy_card.created_at,
-        updated_at: pipefy_card.updated_at,
+        finished_at: pipefy_card.finished_at.map(|dt| dt.naive_utc()),
+        created_at: pipefy_card.created_at.naive_utc(),
+        updated_at: pipefy_card.updated_at.naive_utc(),
     };
     let insertion_result = diesel::insert_into(cards::table)
         .values(&card)

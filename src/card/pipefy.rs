@@ -1,7 +1,7 @@
 use anyhow::Result;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 // use serde::de::{self, Deserializer};
-use serde_json::Value;
+use serde_json::{from_str, Value};
 use std::collections::HashMap;
 use std::error::Error;
 use std::fmt::{self, Formatter};
@@ -29,23 +29,24 @@ impl fmt::Display for Unauthorized {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PipefyCard {
     pub title: String,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
-    pub finished_at: Option<NaiveDateTime>,
+    #[serde(rename(deserialize = "createdAt"))]
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub finished_at: Option<DateTime<Utc>>,
     pub phases_history: Vec<PhaseHistory>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhaseHistory {
     #[serde(rename(deserialize = "firstTimeIn"))]
-    first_time_in: NaiveDateTime,
+    first_time_in: DateTime<Utc>,
     phase: Phase,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Phase {
     name: String,
-    id: usize,
+    id: String,
 }
 
 pub fn by_id(api_key: &str, card_id: i32) -> Result<PipefyCard> {
@@ -55,6 +56,7 @@ pub fn by_id(api_key: &str, card_id: i32) -> Result<PipefyCard> {
         card(id: {id}) {{
             title
             createdAt
+            updated_at
             finished_at
             phases_history {{
                 firstTimeIn
@@ -70,12 +72,10 @@ pub fn by_id(api_key: &str, card_id: i32) -> Result<PipefyCard> {
     query.insert("query", card_query_string);
     let text_response = perform_query(api_key, query)?;
     let response_body: Value = serde_json::from_str(&text_response)?;
+
     let card = serde_json::from_value::<PipefyCard>(response_body["data"]["card"].to_owned());
     match card {
-        Ok(card) => {
-            dbg!(&card);
-            Ok(card)
-        }
+        Ok(card) => Ok(card),
         _ => Err(anyhow::Error::new(Unauthorized::new())),
     }
 }
