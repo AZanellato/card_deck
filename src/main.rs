@@ -36,8 +36,10 @@ fn main() {
                 routes::get_decks,
                 routes::create_user,
                 routes::login_user,
+                routes::login_page,
                 routes::user_info,
-                routes::add_card_to_deck
+                routes::add_card_to_deck,
+                routes::add_token
             ],
         )
         .launch();

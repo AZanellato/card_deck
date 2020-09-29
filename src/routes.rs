@@ -1,13 +1,12 @@
 use crate::card;
 use crate::deck::{self, Deck, InsertableDeck};
 use crate::user::{self, InsertableUser, User};
-use crate::user_token::UserToken;
+use crate::user_token::{self, UserToken};
 use crate::DeckDbConn;
 use diesel::{self, prelude::*};
 use djangohashers::{check_password, make_password};
 use rocket::http::{Cookie, Cookies};
-use rocket::outcome::IntoOutcome;
-use rocket::request::{Form, FromRequest, Outcome, Request};
+use rocket::request::Form;
 use rocket_contrib::json::Json;
 use rocket_contrib::templates::Template;
 
@@ -23,6 +22,11 @@ struct DeckTemplate {
 #[derive(Debug, FromForm)]
 pub struct FormDeck {
     title: String,
+}
+
+#[derive(Debug, FromForm)]
+pub struct Token {
+    token: String,
 }
 
 #[derive(FromForm, Debug)]
@@ -43,20 +47,6 @@ pub struct FormCardId {
     card_id: i32,
 }
 
-impl<'a, 'r> FromRequest<'a, 'r> for User {
-    type Error = ();
-
-    fn from_request(request: &'a Request<'r>) -> Outcome<User, ()> {
-        let conn = request.guard::<DeckDbConn>()?;
-
-        request
-            .cookies()
-            .get_private("user_id")
-            .and_then(|cookie| cookie.value().parse().ok())
-            .and_then(|id| user::fetch_by_id(&*conn, id).ok())
-            .or_forward(())
-    }
-}
 // routes
 #[get("/")]
 pub fn index() -> &'static str {
@@ -113,6 +103,19 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
 #[get("/me")]
 pub fn user_info(user: User) -> Json<(String, String)> {
     Json((user.name, user.email))
+}
+
+#[get("/login")]
+pub fn login_page() -> Template {
+    Template::render(
+        "login",
+        &DeckTemplate {
+            title: None,
+            id: None,
+            error_message: None,
+            parent: "layout",
+        },
+    )
 }
 
 #[post("/decks/<id>", data = "<card_form>")]
@@ -209,7 +212,7 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
     }
 }
 
-#[post("/users/login", data = "<login_info>")]
+#[post("/login", data = "<login_info>")]
 pub fn login_user(
     conn: DeckDbConn,
     login_info: Form<UserLogin>,
@@ -254,4 +257,17 @@ pub fn create_user(
         hash_password,
     };
     Json(Ok(user::create(&*conn, insertable_user)))
+}
+
+#[post("/users/token", data = "<token_form>")]
+pub fn add_token(
+    conn: DeckDbConn,
+    user: User,
+    token_form: Form<Token>,
+) -> Json<Result<User, String>> {
+    let result = user_token::insert(&*conn, &user, token_form.into_inner().token);
+    match result {
+        Ok(_) => Json(Ok(user)),
+        Err(_) => Json(Err("Something went wrong".into())),
+    }
 }

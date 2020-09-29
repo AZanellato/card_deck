@@ -1,5 +1,8 @@
+use crate::rocket::request::{FromRequest, Outcome, Request};
 use crate::schema::users;
+use crate::DeckDbConn;
 use diesel::{self, prelude::*};
+use rocket::outcome::IntoOutcome;
 
 #[derive(Identifiable, Debug, Serialize, Deserialize, Queryable)]
 pub struct User {
@@ -18,6 +21,20 @@ pub struct InsertableUser {
     pub hash_password: String,
 }
 
+impl<'a, 'r> FromRequest<'a, 'r> for User {
+    type Error = ();
+
+    fn from_request(request: &'a Request<'r>) -> Outcome<User, ()> {
+        let conn = request.guard::<DeckDbConn>()?;
+
+        request
+            .cookies()
+            .get_private("user_id")
+            .and_then(|cookie| cookie.value().parse().ok())
+            .and_then(|id| fetch_by_id(&*conn, id).ok())
+            .or_forward(())
+    }
+}
 pub fn create(conn: &PgConnection, insertable_user: InsertableUser) -> User {
     use crate::schema::users::dsl::*;
     diesel::insert_into(users)
