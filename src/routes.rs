@@ -1,4 +1,4 @@
-use crate::card;
+use crate::card::{self, Card};
 use crate::deck::{self, Deck, InsertableDeck};
 use crate::user::{self, InsertableUser, User};
 use crate::user_token::{self, UserToken};
@@ -16,6 +16,7 @@ struct DeckTemplate {
     id: Option<i32>,
     error_message: Option<String>,
     // This key tells handlebars which template is the parent.
+    cards: Vec<Card>,
     parent: &'static str,
 }
 
@@ -84,20 +85,33 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
         diesel::result::Error::NotFound => format!("No deck with id: {}", id),
         _ => "Error on the database".into(),
     });
-    let context = match possible_deck {
-        Ok(deck) => DeckTemplate {
-            title: Some(deck.title),
-            id: Some(deck.id),
-            error_message: None,
-            parent: "layout",
-        },
-        Err(error_message) => DeckTemplate {
-            title: None,
-            id: None,
-            error_message: Some(error_message),
-            parent: "layout",
-        },
+    let deck = match possible_deck {
+        Ok(deck) => deck,
+        Err(error_message) => {
+            return Template::render(
+                "deck",
+                &DeckTemplate {
+                    title: None,
+                    id: None,
+                    error_message: Some(error_message),
+                    cards: vec![],
+                    parent: "layout",
+                },
+            )
+        }
     };
+    let cards: Vec<Card> = Card::belonging_to(&deck)
+        .get_results(&*conn)
+        .unwrap_or_else(|_| vec![]);
+
+    let context = DeckTemplate {
+        title: Some(deck.title),
+        id: Some(deck.id),
+        cards,
+        error_message: None,
+        parent: "layout",
+    };
+
     Template::render("deck", &context)
 }
 #[get("/me")]
@@ -114,6 +128,7 @@ pub fn login_page() -> Template {
             id: None,
             error_message: None,
             parent: "layout",
+            cards: vec![],
         },
     )
 }
@@ -140,42 +155,51 @@ pub fn add_card_to_deck(
                     id: None,
                     error_message: Some(error_message),
                     parent: "layout",
+                    cards: vec![],
                 },
             )
         }
     };
+    let mut cards: Vec<Card> = Card::belonging_to(&deck)
+        .get_results(&*conn)
+        .unwrap_or_else(|_| vec![]);
+
     let query_for_user_token = UserToken::belonging_to(&user).first(&*conn);
 
     if let Err(_) = query_for_user_token {
-        return Template::render(
-            "deck",
-            DeckTemplate {
-                title: None,
-                id: None,
-                error_message: Some("No Token Found".into()),
-                parent: "layout",
-            },
-        );
+        let context = DeckTemplate {
+            title: Some(deck.title),
+            id: Some(deck.id),
+            cards,
+            error_message: None,
+            parent: "layout",
+        };
+        return Template::render("deck", context);
     }
 
     let user_token = query_for_user_token.unwrap();
     let inserted_result = card::from_pipefy_to_deck(&conn, user_token, card_form.card_id, &deck);
 
     match inserted_result {
-        Ok(_) => Template::render(
-            "deck",
-            DeckTemplate {
-                title: Some(deck.title),
-                id: Some(deck.id),
-                error_message: None,
-                parent: "layout",
-            },
-        ),
+        Ok(card) => {
+            cards.push(card);
+            Template::render(
+                "deck",
+                DeckTemplate {
+                    title: Some(deck.title),
+                    id: Some(deck.id),
+                    cards,
+                    error_message: None,
+                    parent: "layout",
+                },
+            )
+        }
         Err(_) => Template::render(
             "deck",
             DeckTemplate {
                 title: None,
                 id: None,
+                cards,
                 error_message: Some("Error when inserting the card".into()),
                 parent: "layout",
             },
@@ -190,11 +214,13 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
         created_by: user.id,
     };
     let result = deck::create(&*conn, insertable_deck);
+    let cards = vec![];
     match result {
         Ok(deck) => {
             let context = DeckTemplate {
                 title: Some(deck.title),
                 id: Some(deck.id),
+                cards,
                 error_message: None,
                 parent: "layout",
             };
@@ -204,6 +230,7 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
             let context = DeckTemplate {
                 title: None,
                 id: None,
+                cards,
                 error_message: Some(err.to_string()),
                 parent: "layout",
             };

@@ -3,11 +3,10 @@ use super::schema::cards;
 use super::user_token::UserToken;
 use anyhow::Result;
 use chrono::NaiveDateTime;
-use chrono::{DateTime, Utc};
 use diesel::{self, insert_into, prelude::*};
 mod pipefy;
 
-#[derive(Associations, Identifiable, Serialize, Deserialize, Queryable)]
+#[derive(Associations, Identifiable, Serialize, Debug, Deserialize, Queryable)]
 #[belongs_to(Deck)]
 pub struct Card {
     pub id: i32,
@@ -73,7 +72,7 @@ pub fn from_pipefy_to_deck(
     user_token: UserToken,
     card_id: i32,
     deck: &Deck,
-) -> Result<usize> {
+) -> Result<Card> {
     let api_token = user_token.token;
     let pipefy_card = pipefy::by_id(&api_token, card_id)?;
     let card = InsertableCard {
@@ -83,9 +82,8 @@ pub fn from_pipefy_to_deck(
         created_at: pipefy_card.created_at.naive_utc(),
         updated_at: pipefy_card.updated_at.naive_utc(),
     };
-    let insertion_result = diesel::insert_into(cards::table)
+    diesel::insert_into(cards::table)
         .values(&card)
-        .execute(conn);
-
-    insertion_result.map_err(|err| anyhow::Error::new(err))
+        .get_result::<Card>(conn)
+        .map_err(|err| anyhow::Error::new(err))
 }
