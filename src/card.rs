@@ -15,6 +15,7 @@ pub struct Card {
     pub finished_at: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub started_at: Option<NaiveDateTime>,
 }
 
 /// This represents a card being inserted into the database, without the auto-generated fields
@@ -26,6 +27,7 @@ pub struct InsertableCard {
     pub finished_at: Option<NaiveDateTime>,
     pub created_at: NaiveDateTime,
     pub updated_at: NaiveDateTime,
+    pub started_at: Option<NaiveDateTime>,
 }
 
 #[derive(Serialize, Deserialize, AsChangeset)]
@@ -36,6 +38,14 @@ pub struct UpdateableCard {
     pub finished_at: Option<Option<NaiveDateTime>>,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
+    pub started_at: Option<Option<NaiveDateTime>>,
+}
+
+pub struct Days(i64);
+
+pub struct Metrics {
+    lead_time: Option<Days>,
+    cycle_time: Option<Days>,
 }
 
 pub fn by_id(conn: &PgConnection, input_id: i32) -> QueryResult<Card> {
@@ -80,10 +90,36 @@ pub fn from_pipefy_to_deck(
         deck_id: deck.id,
         finished_at: pipefy_card.finished_at.map(|dt| dt.naive_utc()),
         created_at: pipefy_card.created_at.naive_utc(),
+        started_at: Some(pipefy_card.created_at.naive_utc()),
         updated_at: pipefy_card.updated_at.naive_utc(),
     };
     diesel::insert_into(cards::table)
         .values(&card)
         .get_result::<Card>(conn)
         .map_err(|err| anyhow::Error::new(err))
+}
+
+impl Card {
+    pub fn metrics(&self) -> Metrics {
+        let lead_time = self.lead_time();
+        let cycle_time = self.cycle_time();
+
+        Metrics {
+            lead_time,
+            cycle_time,
+        }
+    }
+
+    fn cycle_time(&self) -> Option<Days> {
+        let finished_at = self.finished_at?;
+        let duration = self.created_at - finished_at;
+        Some(Days(duration.num_days()))
+    }
+
+    pub fn lead_time(&self) -> Option<Days> {
+        let finished_at = self.finished_at?;
+        let started_at = self.started_at?;
+        let duration = started_at - finished_at;
+        Some(Days(duration.num_days()))
+    }
 }
