@@ -15,6 +15,7 @@ table! {
         id -> Int4,
         title -> Varchar,
         created_by -> Int4,
+        pipe_id -> Int4,
     }
 }
 
