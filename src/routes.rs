@@ -15,14 +15,16 @@ struct DeckTemplate {
     title: Option<String>,
     id: Option<i32>,
     error_message: Option<String>,
-    // This key tells handlebars which template is the parent.
     cards: Vec<Card>,
+    cards_count: usize,
+    // This key tells handlebars which template is the parent.
     parent: &'static str,
 }
 
 #[derive(Debug, FromForm)]
 pub struct FormDeck {
     title: String,
+    pipe_id: i32,
 }
 
 #[derive(Debug, FromForm)]
@@ -95,6 +97,7 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
                     id: None,
                     error_message: Some(error_message),
                     cards: vec![],
+                    cards_count: 0,
                     parent: "layout",
                 },
             )
@@ -107,6 +110,7 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
     let context = DeckTemplate {
         title: Some(deck.title),
         id: Some(deck.id),
+        cards_count: cards.len(),
         cards,
         error_message: None,
         parent: "layout",
@@ -129,6 +133,7 @@ pub fn login_page() -> Template {
             error_message: None,
             parent: "layout",
             cards: vec![],
+            cards_count: 0,
         },
     )
 }
@@ -156,6 +161,7 @@ pub fn add_card_to_deck(
                     error_message: Some(error_message),
                     parent: "layout",
                     cards: vec![],
+                    cards_count: 0,
                 },
             )
         }
@@ -170,6 +176,7 @@ pub fn add_card_to_deck(
         let context = DeckTemplate {
             title: Some(deck.title),
             id: Some(deck.id),
+            cards_count: cards.len(),
             cards,
             error_message: None,
             parent: "layout",
@@ -188,6 +195,7 @@ pub fn add_card_to_deck(
                 DeckTemplate {
                     title: Some(deck.title),
                     id: Some(deck.id),
+                    cards_count: cards.len(),
                     cards,
                     error_message: None,
                     parent: "layout",
@@ -199,6 +207,7 @@ pub fn add_card_to_deck(
             DeckTemplate {
                 title: None,
                 id: None,
+                cards_count: cards.len(),
                 cards,
                 error_message: Some("Error when inserting the card".into()),
                 parent: "layout",
@@ -209,17 +218,19 @@ pub fn add_card_to_deck(
 
 #[post("/decks", data = "<form_deck>")]
 pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Template {
-    let insertable_deck = InsertableDeck {
-        title: form_deck.into_inner().title,
+    let ins_deck = |form: FormDeck| InsertableDeck {
+        title: form.title,
         created_by: user.id,
+        pipe_id: form.pipe_id,
     };
-    let result = deck::create(&*conn, insertable_deck);
+    let result = deck::create(&*conn, ins_deck(form_deck.into_inner()));
     let cards = vec![];
     match result {
         Ok(deck) => {
             let context = DeckTemplate {
                 title: Some(deck.title),
                 id: Some(deck.id),
+                cards_count: cards.len(),
                 cards,
                 error_message: None,
                 parent: "layout",
@@ -230,6 +241,7 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
             let context = DeckTemplate {
                 title: None,
                 id: None,
+                cards_count: cards.len(),
                 cards,
                 error_message: Some(err.to_string()),
                 parent: "layout",
