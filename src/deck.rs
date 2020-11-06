@@ -7,6 +7,7 @@ pub struct Deck {
     pub title: String,
     pub created_by: i32,
     pub pipe_id: i32,
+    pub starting_phase_id: i32,
 }
 
 /// This represents a deck being inserted into the database, without the auto-generated fields
@@ -16,6 +17,7 @@ pub struct InsertableDeck {
     pub title: String,
     pub created_by: i32,
     pub pipe_id: i32,
+    pub starting_phase_id: i32,
 }
 
 #[derive(Serialize, Deserialize, Insertable)]

@@ -16,6 +16,7 @@ table! {
         title -> Varchar,
         created_by -> Int4,
         pipe_id -> Int4,
+        starting_phase_id -> Int4,
     }
 }
 
