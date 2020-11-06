@@ -61,6 +61,18 @@ pub fn by_deck(conn: &PgConnection, deck_id: i32) -> Vec<Card> {
         .unwrap_or_else(|_| Vec::new())
 }
 
+pub fn count_by_deck(conn: &PgConnection, deck_id: i32) -> i64 {
+    use crate::schema::cards::dsl::*;
+
+    let count = cards
+        .filter(deck_id.eq(deck_id))
+        .count()
+        .get_result(conn)
+        .unwrap_or(0);
+
+    count
+}
+
 pub fn create(conn: &PgConnection, insertable: InsertableCard) -> QueryResult<Card> {
     use crate::schema::cards::dsl::*;
 

@@ -39,3 +39,35 @@ pub fn create(conn: &PgConnection, insertable: InsertableDeck) -> QueryResult<De
 
     insert_into(decks).values(&insertable).get_result(conn)
 }
+
+impl Deck {
+    pub fn throughput(&self, conn: &PgConnection) -> usize {
+        let cards = crate::card::by_deck(conn, self.id);
+        13
+    }
+
+    pub fn lead_time(&self, conn: &PgConnection) -> Option<usize> {
+        let cards = crate::card::by_deck(conn, self.id);
+        let finished_cards_size = cards
+            .iter()
+            .filter(|card| card.finished_at.is_some())
+            .count();
+
+        if finished_cards_size == 0 {
+            return None;
+        }
+
+        let cards_lead_times: i64 = cards
+            .into_iter()
+            .map(|card| {
+                card.finished_at
+                    .map(|f_date| f_date.date())
+                    .unwrap_or(chrono::offset::Local::today().naive_utc())
+                    - card.created_at.date()
+            })
+            .map(|duration| duration.num_days())
+            .sum();
+
+        Some(cards_lead_times as usize / finished_cards_size)
+    }
+}

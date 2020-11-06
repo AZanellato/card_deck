@@ -16,7 +16,9 @@ struct DeckTemplate {
     id: Option<i32>,
     error_message: Option<String>,
     cards: Vec<Card>,
-    cards_count: usize,
+    cards_count: i64,
+    lead_time: usize,
+    throughput: usize,
     // This key tells handlebars which template is the parent.
     parent: &'static str,
 }
@@ -82,7 +84,7 @@ pub fn get_deck_as_json(conn: DeckDbConn, id: i32) -> Result<Json<Deck>, String>
 }
 
 #[get("/decks/<id>", format = "html")]
-pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
+pub fn get_deck(conn: DeckDbConn, id: i32, _u: User) -> Template {
     let possible_deck: Result<Deck, String> = deck::by_id(&*conn, id).map_err(|err| match err {
         diesel::result::Error::NotFound => format!("No deck with id: {}", id),
         _ => "Error on the database".into(),
@@ -98,6 +100,8 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
                     error_message: Some(error_message),
                     cards: vec![],
                     cards_count: 0,
+                    lead_time: 7,
+                    throughput: 17,
                     parent: "layout",
                 },
             )
@@ -107,10 +111,15 @@ pub fn get_deck(conn: DeckDbConn, id: i32) -> Template {
         .get_results(&*conn)
         .unwrap_or_else(|_| vec![]);
 
+    let cards_count = card::count_by_deck(&conn, deck.id);
+    let lead_time = deck.lead_time(&conn).unwrap_or(0);
+
     let context = DeckTemplate {
         title: Some(deck.title),
         id: Some(deck.id),
-        cards_count: cards.len(),
+        cards_count,
+        lead_time,
+        throughput: 17,
         cards,
         error_message: None,
         parent: "layout",
@@ -134,6 +143,8 @@ pub fn login_page() -> Template {
             parent: "layout",
             cards: vec![],
             cards_count: 0,
+            lead_time: 7,
+            throughput: 17,
         },
     )
 }
@@ -162,6 +173,8 @@ pub fn add_card_to_deck(
                     parent: "layout",
                     cards: vec![],
                     cards_count: 0,
+                    lead_time: 7,
+                    throughput: 17,
                 },
             )
         }
@@ -172,11 +185,14 @@ pub fn add_card_to_deck(
 
     let query_for_user_token = UserToken::belonging_to(&user).first(&*conn);
 
+    let cards_count = card::count_by_deck(&conn, deck.id);
     if let Err(_) = query_for_user_token {
         let context = DeckTemplate {
             title: Some(deck.title),
             id: Some(deck.id),
-            cards_count: cards.len(),
+            cards_count,
+            lead_time: 7,
+            throughput: 17,
             cards,
             error_message: None,
             parent: "layout",
@@ -187,15 +203,19 @@ pub fn add_card_to_deck(
     let user_token = query_for_user_token.unwrap();
     let inserted_result = card::from_pipefy_to_deck(&conn, user_token, card_form.card_id, &deck);
 
+    let cards_count = card::count_by_deck(&conn, deck.id);
     match inserted_result {
         Ok(card) => {
             cards.push(card);
+            let cards_count = card::count_by_deck(&conn, deck.id);
             Template::render(
                 "deck",
                 DeckTemplate {
                     title: Some(deck.title),
                     id: Some(deck.id),
-                    cards_count: cards.len(),
+                    cards_count,
+                    lead_time: 7,
+                    throughput: 17,
                     cards,
                     error_message: None,
                     parent: "layout",
@@ -207,7 +227,9 @@ pub fn add_card_to_deck(
             DeckTemplate {
                 title: None,
                 id: None,
-                cards_count: cards.len(),
+                cards_count,
+                lead_time: 7,
+                throughput: 17,
                 cards,
                 error_message: Some("Error when inserting the card".into()),
                 parent: "layout",
@@ -227,10 +249,13 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
     let cards = vec![];
     match result {
         Ok(deck) => {
+            let cards_count = card::count_by_deck(&conn, deck.id);
             let context = DeckTemplate {
                 title: Some(deck.title),
                 id: Some(deck.id),
-                cards_count: cards.len(),
+                cards_count,
+                lead_time: 7,
+                throughput: 17,
                 cards,
                 error_message: None,
                 parent: "layout",
@@ -238,10 +263,13 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
             Template::render("deck", &context)
         }
         Err(err) => {
+            let cards_count = 0;
             let context = DeckTemplate {
                 title: None,
                 id: None,
-                cards_count: cards.len(),
+                cards_count,
+                lead_time: 7,
+                throughput: 17,
                 cards,
                 error_message: Some(err.to_string()),
                 parent: "layout",
