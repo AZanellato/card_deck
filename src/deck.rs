@@ -46,7 +46,7 @@ impl Deck {
         13
     }
 
-    pub fn lead_time(&self, conn: &PgConnection) -> Option<usize> {
+    pub fn lead_time(&self, conn: &PgConnection) -> usize {
         let cards = crate::card::by_deck(conn, self.id);
         let finished_cards_size = cards
             .iter()
@@ -54,7 +54,7 @@ impl Deck {
             .count();
 
         if finished_cards_size == 0 {
-            return None;
+            return 0;
         }
 
         let cards_lead_times: i64 = cards
@@ -68,6 +68,6 @@ impl Deck {
             .map(|duration| duration.num_days())
             .sum();
 
-        Some(cards_lead_times as usize / finished_cards_size)
+        cards_lead_times as usize / finished_cards_size
     }
 }
