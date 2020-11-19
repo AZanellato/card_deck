@@ -44,8 +44,7 @@ pub fn create(conn: &PgConnection, insertable: InsertableDeck) -> QueryResult<De
 
 impl Deck {
     pub fn throughput(&self, conn: &PgConnection) -> usize {
-        let cards = crate::card::by_deck(conn, self.id);
-        13
+        crate::card::throughput_by_deck(conn, self.id, 2)
     }
 
     pub fn lead_time(&self, conn: &PgConnection) -> usize {

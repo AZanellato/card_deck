@@ -19,7 +19,7 @@ pub struct Card {
 }
 
 /// This represents a card being inserted into the database, without the auto-generated fields
-#[derive(Serialize, Deserialize, Insertable)]
+#[derive(Serialize, Deserialize, Insertable, Debug)]
 #[table_name = "cards"]
 pub struct InsertableCard {
     pub title: String,
@@ -61,16 +61,33 @@ pub fn by_deck(conn: &PgConnection, deck_id: i32) -> Vec<Card> {
         .unwrap_or_else(|_| Vec::new())
 }
 
-pub fn count_by_deck(conn: &PgConnection, deck_id: i32) -> i64 {
+pub fn count_by_deck(conn: &PgConnection, i_deck_id: i32) -> i64 {
     use crate::schema::cards::dsl::*;
 
     let count = cards
-        .filter(deck_id.eq(deck_id))
+        .filter(deck_id.eq(i_deck_id))
         .count()
         .get_result(conn)
         .unwrap_or(0);
 
     count
+}
+
+pub fn throughput_by_deck(conn: &PgConnection, i_deck_id: i32, n_weeks: u32) -> usize {
+    use crate::schema::cards::dsl::*;
+
+    let today = chrono::offset::Local::today().naive_utc();
+    let date = today - chrono::Duration::weeks(n_weeks.into());
+    let t = chrono::NaiveTime::from_hms_milli(00, 00, 00, 000);
+    let date_time = date.and_time(t);
+    let throughput = cards
+        .filter(deck_id.eq(i_deck_id))
+        .filter(finished_at.gt(date_time))
+        .count()
+        .get_result(conn)
+        .unwrap_or(0);
+
+    throughput as usize
 }
 
 pub fn create(conn: &PgConnection, insertable: InsertableCard) -> QueryResult<Card> {
@@ -97,14 +114,27 @@ pub fn from_pipefy_to_deck(
 ) -> Result<Card> {
     let api_token = user_token.token;
     let pipefy_card = pipefy::by_id(&api_token, card_id)?;
+    let starting_phase_id = deck.starting_phase_id;
+    let start_phase_history = pipefy_card.phases_history.iter().find(|phase_history| {
+        match phase_history.phase.id.parse::<i32>() {
+            Ok(id) => id == starting_phase_id,
+            Err(_) => false,
+        }
+    });
+
+    let started_at = start_phase_history.map(|history| history.first_time_in.naive_utc());
+
+    dbg!(&started_at);
+
     let card = InsertableCard {
         title: pipefy_card.title,
         deck_id: deck.id,
         finished_at: pipefy_card.finished_at.map(|dt| dt.naive_utc()),
         created_at: pipefy_card.created_at.naive_utc(),
-        started_at: Some(pipefy_card.created_at.naive_utc()),
         updated_at: pipefy_card.updated_at.naive_utc(),
+        started_at,
     };
+
     diesel::insert_into(cards::table)
         .values(&card)
         .get_result::<Card>(conn)

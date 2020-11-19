@@ -44,10 +44,17 @@
       <div class="card-table">
         {{#each cards}}
             <a class="panel-block is-active">
-              <span class="panel-icon">
-                <i class="fas fa-book" aria-hidden="true"></i>
-              </span>
-              {{ this.title }}
+              {{#if this.finished_at}}
+                <span class="panel-icon has-text-success">
+                  <i class="far fa-check-square"></i>
+                </span>
+                <h1 class="has-text-grey-light"> {{ this.title }} </h1>
+              {{else}} 
+                <span class="panel-icon">
+                  <i class="far fa-square" aria-hidden="true"></i> 
+                </span>
+                <h1> {{ this.title }} </h1>
+              {{/if}}
             </a>
         {{/each}}
       </div>

@@ -27,6 +27,7 @@ struct DeckTemplate {
 pub struct FormDeck {
     title: String,
     pipe_id: i32,
+    starting_phase_id: i32,
 }
 
 #[derive(Debug, FromForm)]
@@ -100,8 +101,8 @@ pub fn get_deck(conn: DeckDbConn, id: i32, _u: User) -> Template {
                     error_message: Some(error_message),
                     cards: vec![],
                     cards_count: 0,
-                    lead_time: 7,
-                    throughput: 17,
+                    lead_time: 0,
+                    throughput: 0,
                     parent: "layout",
                 },
             )
@@ -114,12 +115,13 @@ pub fn get_deck(conn: DeckDbConn, id: i32, _u: User) -> Template {
     let cards_count = card::count_by_deck(&conn, deck.id);
     let lead_time = deck.lead_time(&conn);
 
+    let throughput = deck.throughput(&conn);
     let context = DeckTemplate {
         title: Some(deck.title),
         id: Some(deck.id),
         cards_count,
         lead_time,
-        throughput: 17,
+        throughput,
         cards,
         error_message: None,
         parent: "layout",
@@ -174,7 +176,7 @@ pub fn add_card_to_deck(
                     cards: vec![],
                     cards_count: 0,
                     lead_time: 0,
-                    throughput: 17,
+                    throughput: 0,
                 },
             )
         }
@@ -185,6 +187,7 @@ pub fn add_card_to_deck(
 
     let query_for_user_token = UserToken::belonging_to(&user).first(&*conn);
     let lead_time = deck.lead_time(&conn);
+    let throughput = deck.throughput(&conn);
 
     let cards_count = card::count_by_deck(&conn, deck.id);
     if let Err(_) = query_for_user_token {
@@ -193,7 +196,7 @@ pub fn add_card_to_deck(
             id: Some(deck.id),
             cards_count,
             lead_time,
-            throughput: 17,
+            throughput,
             cards,
             error_message: None,
             parent: "layout",
@@ -206,6 +209,8 @@ pub fn add_card_to_deck(
 
     let cards_count = card::count_by_deck(&conn, deck.id);
     let lead_time = deck.lead_time(&conn);
+    let throughput = deck.throughput(&conn);
+
     match inserted_result {
         Ok(card) => {
             cards.push(card);
@@ -217,7 +222,7 @@ pub fn add_card_to_deck(
                     id: Some(deck.id),
                     cards_count,
                     lead_time,
-                    throughput: 17,
+                    throughput,
                     cards,
                     error_message: None,
                     parent: "layout",
@@ -231,7 +236,7 @@ pub fn add_card_to_deck(
                 id: None,
                 cards_count,
                 lead_time,
-                throughput: 17,
+                throughput: deck.throughput(&conn),
                 cards,
                 error_message: Some("Error when inserting the card".into()),
                 parent: "layout",
@@ -246,6 +251,7 @@ pub fn post_deck(conn: DeckDbConn, user: User, form_deck: Form<FormDeck>) -> Tem
         title: form.title,
         created_by: user.id,
         pipe_id: form.pipe_id,
+        starting_phase_id: form.starting_phase_id,
     };
     let result = deck::create(&*conn, ins_deck(form_deck.into_inner()));
     let cards = vec![];
