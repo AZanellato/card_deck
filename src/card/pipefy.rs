@@ -1,6 +1,5 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-// use serde::de::{self, Deserializer};
 use serde_json::{from_str, Value};
 use std::collections::HashMap;
 use std::error::Error;
@@ -39,14 +38,14 @@ pub struct PipefyCard {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PhaseHistory {
     #[serde(rename(deserialize = "firstTimeIn"))]
-    first_time_in: DateTime<Utc>,
-    phase: Phase,
+    pub first_time_in: DateTime<Utc>,
+    pub phase: Phase,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Phase {
-    name: String,
-    id: String,
+    pub name: String,
+    pub id: String,
 }
 
 pub fn by_id(api_key: &str, card_id: i32) -> Result<PipefyCard> {

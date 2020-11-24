@@ -6,6 +6,7 @@ table! {
         finished_at -> Nullable<Timestamp>,
         created_at -> Timestamp,
         updated_at -> Timestamp,
+        started_at -> Nullable<Timestamp>,
     }
 }
 
@@ -14,6 +15,8 @@ table! {
         id -> Int4,
         title -> Varchar,
         created_by -> Int4,
+        pipe_id -> Int4,
+        starting_phase_id -> Int4,
     }
 }
 
@@ -38,4 +41,9 @@ table! {
 joinable!(cards -> decks (deck_id));
 joinable!(user_tokens -> users (user_id));
 
-allow_tables_to_appear_in_same_query!(cards, decks, user_tokens, users,);
+allow_tables_to_appear_in_same_query!(
+    cards,
+    decks,
+    user_tokens,
+    users,
+);
